@@ -9,6 +9,8 @@ export type Env = {
   DB: D1Database;
   OPENROUTER_API_KEY: string;
   OPENROUTER_MODEL: string;
+  ANTHROPIC_API_KEY?: string;
+  ANTHROPIC_MODEL?: string;
   LANGFUSE_PUBLIC_KEY: string;
   LANGFUSE_SECRET_KEY: string;
   LANGFUSE_HOST: string;
