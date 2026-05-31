@@ -1,0 +1,25 @@
+{
+  "name": "backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:local": "wrangler d1 execute meeting-processor-db --local --file=schema.sql",
+    "db:remote": "wrangler d1 execute meeting-processor-db --remote --file=schema.sql"
+  },
+  "dependencies": {
+    "hono": "^4.12.23",
+    "langfuse": "^3.38.20",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.16.10",
+    "@cloudflare/workers-types": "^4.20260528.1",
+    "typescript": "^5.9.3",
+    "vitest": "4.1.7",
+    "wrangler": "^4.95.0"
+  }
+}

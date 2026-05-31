@@ -1,0 +1,13 @@
+name = "meeting-processor-api"
+main = "src/index.ts"
+compatibility_date = "2025-05-28"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "meeting-processor-db"
+database_id = "3a1ba5aa-e9de-48dd-8eeb-2ae8c2b3bf72"
+
+[vars]
+LANGFUSE_HOST = "https://cloud.langfuse.com"
+OPENROUTER_MODEL = "openai/gpt-oss-120b:free"
