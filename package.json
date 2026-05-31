@@ -1,0 +1,11 @@
+{
+  "name": "meetgest-dw",
+  "private": true,
+  "workspaces": ["backend", "frontend"],
+  "scripts": {
+    "test:unit": "cd backend && npx vitest run",
+    "test:e2e:dev": "cd frontend && npm run e2e",
+    "test:e2e:prod": "cd frontend && npm run e2e:prod",
+    "test:all": "npm run test:unit && npm run test:e2e:dev"
+  }
+}
