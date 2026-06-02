@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>MeetGest · Project Overview</title>
+<style>
+  /* ---- Theme (from the MeetGest website) ---- */
+  :root {
+    --bg:        #ffffff;
+    --blue:      #8CC0EB;
+    --blue-deep: #4a93cb;
+    --cream:     #FFEBCC;
+    --orange:    #e69b35;
+    --navy:      #1E293B;
+    --slate:     #475569;
+    --slate-l:   #64748b;
+    --line:      #ece6cf;
+    --card:      #FFF9D2;
+    --card-line: #ecd98f;
+    --green:     #3a9d6b;
+    --green-bg:  #e6f5ec;
+    --red:       #b03b3b;
+    --red-bg:    #fde2e2;
+  }
+
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Aptos", "Inter", system-ui, sans-serif;
+    color: var(--slate); background: var(--bg);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    font-size: 15px; line-height: 1.6;
+  }
+
+  .page {
+    width: 210mm; min-height: 297mm; padding: 20mm 18mm 24mm;
+    background: var(--bg); position: relative;
+    page-break-after: always; overflow: hidden;
+  }
+  .page:last-child { page-break-after: auto; }
+  .page.vcenter { display: flex; flex-direction: column; justify-content: center; }
+
+  /* ---- Header / cover ---- */
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--blue-deep); }
+  .cover-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .cover-head h1 { font-size: 40px; line-height: 1.1; color: var(--navy); margin: 10px 0 6px; font-weight: 800; letter-spacing: -0.5px; }
+  .cover-head .sub { font-size: 16px; color: var(--slate-l); margin: 0; }
+  .brand { display: flex; align-items: center; gap: 9px; margin-bottom: 4px; }
+  .brand img { width: 34px; height: 34px; border-radius: 8px; }
+  .brand span { font-size: 19px; font-weight: 800; color: var(--navy); }
+  .badge { background: var(--blue); color: var(--navy); border-radius: 12px; padding: 14px 18px; text-align: right; min-width: 160px; box-shadow: 0 2px 6px rgba(74,147,203,.25); }
+  .badge b { display: block; font-size: 15px; font-weight: 800; }
+  .badge small { font-size: 11.5px; opacity: .85; }
+
+  /* ---- Section headers ---- */
+  .section { margin-top: 30px; }
+  .section-h { font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--blue-deep); padding-bottom: 7px; border-bottom: 2px solid var(--blue); margin-bottom: 16px; }
+  p { margin: 0 0 12px; }
+  .lead { font-size: 16.5px; color: var(--slate); }
+
+  /* ---- Callout / why-box ---- */
+  .callout { background: var(--cream); border-left: 4px solid var(--orange); border-radius: 10px; padding: 16px 18px; color: var(--navy); margin: 16px 0; font-size: 15px; }
+  .callout b { color: var(--navy); }
+  .why-box { background: #eaf4fb; border-left: 4px solid var(--blue-deep); border-radius: 10px; padding: 16px 18px; color: var(--navy); margin: 16px 0; font-size: 15px; }
+  .why-box .h { font-weight: 800; display: block; margin-bottom: 4px; }
+
+  /* ---- Two-up cards ---- */
+  .twoup { display: flex; gap: 16px; margin-top: 8px; }
+  .twoup .col { flex: 1; background: var(--card); border: 1px solid var(--card-line); border-radius: 12px; padding: 18px 20px; }
+  .twoup .col h3 { margin: 0 0 10px; font-size: 15px; color: var(--navy); display: flex; align-items: center; gap: 8px; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; }
+  .pill.problem { background: var(--red-bg); color: var(--red); }
+  .pill.solution { background: var(--blue); color: var(--navy); }
+  .twoup ul { margin: 0; padding-left: 20px; }
+  .twoup li { margin-bottom: 7px; font-size: 14.5px; }
+
+  /* ---- Scenario (Before / After narrative) ---- */
+  .scenario { display: flex; gap: 16px; margin-top: 8px; }
+  .scenario .s { flex: 1; border-radius: 12px; padding: 18px 20px; }
+  .scenario .s.before { background: var(--red-bg); border: 1px solid #f3c5c5; }
+  .scenario .s.after  { background: var(--green-bg); border: 1px solid #c2e6d2; }
+  .scenario .tag { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .scenario .before .tag { color: var(--red); }
+  .scenario .after  .tag { color: var(--green); }
+  .scenario .quote { font-size: 15px; color: var(--navy); margin-top: 10px; font-style: italic; }
+  .scenario .step { font-size: 14.5px; color: var(--navy); margin-top: 6px; }
+
+  /* ---- Benefits + impact ---- */
+  .impact-row { display: flex; gap: 16px; margin-top: 8px; align-items: stretch; }
+  .benefits { flex: 1.3; background: var(--card); border: 1px solid var(--card-line); border-radius: 12px; padding: 18px 20px; }
+  .benefits li { list-style: none; margin-bottom: 10px; font-size: 15px; color: var(--navy); display: flex; gap: 10px; align-items: flex-start; }
+  .benefits ul { margin: 0; padding: 0; }
+  .check { color: var(--green); font-weight: 900; flex-shrink: 0; }
+  .stat-card { flex: 1; background: var(--blue); color: var(--navy); border-radius: 12px; padding: 22px 20px; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+  .stat-card .from { font-size: 17px; opacity: .8; text-decoration: line-through; }
+  .stat-card .to { font-size: 34px; font-weight: 800; line-height: 1.1; margin: 4px 0; }
+  .stat-card .lbl { font-size: 12.5px; font-weight: 700; }
+  .note { font-size: 12px; color: var(--slate-l); margin-top: 10px; }
+
+  /* ---- Steps ---- */
+  .steps-row { display: flex; gap: 12px; margin: 8px 0 4px; }
+  .step-b { flex: 1; background: var(--card); border: 1px solid var(--card-line); border-radius: 12px; padding: 14px 16px; }
+  .step-b .n { width: 26px; height: 26px; border-radius: 8px; background: var(--blue); color: var(--navy); font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+  .step-b .t { font-size: 13.5px; color: var(--navy); font-weight: 600; }
+
+  /* ---- Feature / screenshot ---- */
+  .feature { background: var(--card); border: 1px solid var(--card-line); border-radius: 14px; overflow: hidden; margin-bottom: 14px; page-break-inside: avoid; }
+  .feature-head { display: flex; align-items: center; gap: 11px; padding: 14px 18px; background: rgba(255,255,255,.55); border-bottom: 1px solid var(--card-line); }
+  .feature-num { width: 28px; height: 28px; border-radius: 8px; background: var(--blue); color: var(--navy); font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .feature-head h3 { margin: 0; font-size: 17px; color: var(--navy); }
+  .feature-head .benefit { margin-left: auto; font-size: 13px; color: var(--orange); font-weight: 700; }
+  .shot { display: block; background: #ffffff; text-align: center; padding: 14px 16px; border-top: 1px solid var(--card-line); }
+  /* width:auto + max-width:100% prevents upscaling small screenshots (keeps them crisp). */
+  .shot img { display: block; margin: 0 auto; width: auto; height: auto; max-width: 100%; max-height: 150mm;
+              border: 1px solid #dfe5ec; border-radius: 8px; box-shadow: 0 1px 6px rgba(15,23,42,.08); }
+  .shot.compact img { max-height: 108mm; }
+  .shot.placeholder { padding: 0; height: 170px; display: flex; align-items: center; justify-content: center; color: var(--slate-l); font-size: 13px; border-top: 1px dashed var(--card-line); }
+  .feature-body { padding: 14px 18px; font-size: 14.5px; }
+
+  /* ---- Two features stacked with a small gap ---- */
+  .feat-row { display: flex; flex-direction: column; gap: 16px; }
+  .feat-row .feature { margin-bottom: 0; }
+  .feat-row .shot { padding: 12px 16px; }
+  .feat-row .shot img { max-width: 72%; max-height: 78mm; }
+  .feat-row .feature-body { font-size: 13.5px; padding: 12px 18px; }
+
+  /* ---- Two columns (security + cost) ---- */
+  .duo { display: flex; gap: 22px; }
+  .duo > .section { flex: 1; margin-top: 0; }
+  .tech-strip { display: flex; gap: 18px; flex-wrap: wrap; background: var(--card); border: 1px solid var(--card-line); border-radius: 12px; padding: 13px 18px; margin-top: 18px; }
+  .tech-strip span { font-size: 13px; color: var(--navy); }
+  .tech-strip b { color: var(--blue-deep); }
+
+  /* ---- Example output: labeled parts ---- */
+  .parts { display: flex; gap: 10px; margin-top: 12px; }
+  .part { flex: 1; background: var(--card); border: 1px solid var(--card-line); border-radius: 10px; padding: 11px 12px; }
+  .part .pn { width: 22px; height: 22px; border-radius: 6px; background: var(--blue); color: var(--navy); font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+  .part .pt { font-size: 13px; color: var(--navy); font-weight: 700; }
+  .part .pd { font-size: 11.5px; color: var(--slate-l); margin-top: 2px; }
+
+  /* ---- Tech / cost ---- */
+  .grid3 { display: flex; gap: 14px; flex-wrap: wrap; }
+  .tcard { flex: 1 1 30%; background: var(--card); border: 1px solid var(--card-line); border-radius: 12px; padding: 18px; }
+  .tcard .k { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--blue-deep); }
+  .tcard .v { font-size: 17px; color: var(--navy); font-weight: 700; margin-top: 5px; }
+  .tcard .d { font-size: 13px; color: var(--slate-l); margin-top: 5px; }
+
+  /* ---- Security list ---- */
+  .sec-list { margin: 0; padding: 0; }
+  .sec-list li { list-style: none; display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; font-size: 14.5px; color: var(--navy); }
+  .sec-list .ic { color: var(--blue-deep); font-weight: 900; flex-shrink: 0; }
+  .cost-list { margin: 0; padding: 0; }
+  .cost-list li { list-style: none; display: flex; gap: 10px; align-items: flex-start; margin-bottom: 9px; font-size: 14.5px; color: var(--navy); }
+  .cost-list .ic { color: var(--green); font-weight: 900; flex-shrink: 0; }
+
+  /* ---- Roadmap ---- */
+  .roadmap { display: flex; flex-direction: column; gap: 11px; }
+  .phase { display: flex; gap: 13px; align-items: center; background: var(--card); border: 1px solid var(--card-line); border-radius: 12px; padding: 14px 18px; }
+  .phase.done { border-left: 4px solid var(--green); }
+  .phase.next { border-left: 4px solid var(--blue-deep); }
+  .phase .pbadge { font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; flex-shrink: 0; min-width: 78px; text-align: center; }
+  .phase.done .pbadge { background: var(--green-bg); color: var(--green); }
+  .phase .pbadge.plan { background: #eaf4fb; color: var(--blue-deep); }
+  .phase .pt { font-size: 15px; color: var(--navy); font-weight: 600; }
+  .phase .pt b { font-weight: 800; }
+
+  /* ---- Live link ---- */
+  .link-cta { margin-top: 20px; background: var(--card); border: 2px solid var(--blue); border-radius: 14px; padding: 22px; text-align: center; }
+  .link-cta .url { font-size: 20px; font-weight: 800; color: var(--blue-deep); }
+  .link-cta .steps { font-size: 14px; color: var(--slate); margin-top: 8px; }
+
+  .foot { position: absolute; bottom: 12mm; left: 18mm; right: 18mm; text-align: center; font-size: 11.5px; color: var(--slate-l); border-top: 1px solid var(--line); padding-top: 9px; }
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE 1: COVER + WHAT IT DOES ============ -->
+<section class="page">
+  <div class="cover-head">
+    <div>
+      <div class="brand">
+        <img src="assets/logo.svg" alt="" onerror="this.style.display='none'"/>
+        <span>MeetGest</span>
+      </div>
+      <div class="eyebrow">Internal Tool · Project Overview</div>
+      <h1>AI Meeting Transcript Processor</h1>
+      <p class="sub">Turns raw meeting transcripts into clean summaries, action items &amp; decisions.</p>
+    </div>
+    <div class="badge"><b>Live &amp; Deployed</b><small>Internal team tool</small></div>
+  </div>
+
+  <div class="section">
+    <div class="section-h">What it does &amp; why</div>
+    <p class="lead">
+      Every day the team runs client briefs, campaign reviews and syncs. Afterwards someone is supposed
+      to write up notes and post action items, but it rarely happens consistently. Notes get messy,
+      tasks get forgotten, and there's no single place to see what was decided.
+    </p>
+    <div class="why-box">
+      <span class="h">Why we built this</span>
+      Meeting notes were inconsistent and action items often got lost in chat threads. MeetGest
+      standardizes the write-up and makes ownership clear, so decisions and follow-ups don't slip.
+    </div>
+    <div class="callout">
+      <b>The 30-second catch-up.</b> Anyone who missed a meeting can read the summary, see who owns what,
+      and know exactly what was decided, without watching a recording or chasing people.
+    </div>
+  </div>
+
+  <div class="foot">MeetGest · AI Meeting Transcript Processor · Internal Tool</div>
+</section>
+
+<!-- ============ PAGE 2: WHY IT MATTERS + IMPACT ============ -->
+<section class="page">
+  <div class="section" style="margin-top:0">
+    <div class="section-h">Why it matters</div>
+    <p class="lead">A familiar moment, before and after.</p>
+    <div class="scenario">
+      <div class="s before">
+        <span class="tag">Before</span>
+        <div class="quote">"Who agreed to this change?"</div>
+        <div class="step">Nobody's sure. Someone scrolls through chat history. 20 minutes gone, and the answer is still fuzzy.</div>
+      </div>
+      <div class="s after">
+        <span class="tag">After</span>
+        <div class="quote">Open MeetGest. Find the meeting.</div>
+        <div class="step">The decision, and who made it, in seconds. Every action item already has an owner.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-h">Potential impact</div>
+    <div class="impact-row">
+      <div class="benefits">
+        <ul>
+          <li><span class="check">✓</span> Save ~15–20 minutes of write-up per meeting</li>
+          <li><span class="check">✓</span> Consistent, structured notes every time</li>
+          <li><span class="check">✓</span> Clear owner &amp; deadline on every action item</li>
+          <li><span class="check">✓</span> A searchable record of past meetings</li>
+        </ul>
+      </div>
+      <div class="stat-card">
+        <div class="from">~15–20 min</div>
+        <div class="to">under 1 min</div>
+        <div class="lbl">to document a meeting</div>
+      </div>
+    </div>
+    <p class="note">Figures are estimates based on typical manual note-taking, shown to illustrate the time saved.</p>
+  </div>
+
+  <div class="foot">MeetGest · AI Meeting Transcript Processor · Internal Tool</div>
+</section>
+
+<!-- ============ PAGE 3: HOW IT WORKS ============ -->
+<section class="page">
+  <div class="section" style="margin-top:0">
+    <div class="section-h">How a person uses it</div>
+    <p class="lead">Four steps, no training needed.</p>
+    <div class="steps-row">
+      <div class="step-b"><div class="n">1</div><div class="t">Paste the transcript or upload a .txt, add a title</div></div>
+      <div class="step-b"><div class="n">2</div><div class="t">Click Generate Digest</div></div>
+      <div class="step-b"><div class="n">3</div><div class="t">Review &amp; tweak any field</div></div>
+      <div class="step-b"><div class="n">4</div><div class="t">Export to Markdown, PDF or Google Docs</div></div>
+    </div>
+    <div class="feature" style="margin-top:12px">
+      <div class="feature-head">
+        <div class="feature-num">▸</div>
+        <h3>The main screen</h3>
+        <div class="benefit">Paste · Title · Generate</div>
+      </div>
+      <div class="shot">
+        <img src="assets/01-processor.png" alt="Processor page"
+             onerror="this.parentNode.classList.add('placeholder');this.remove();this.parentNode.textContent='[ screenshot: 01-processor.png ]'"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">MeetGest · AI Meeting Transcript Processor · Internal Tool</div>
+</section>
+
+<!-- ============ PAGE 4: EXAMPLE OUTPUT ============ -->
+<section class="page">
+  <div class="section" style="margin-top:0">
+    <div class="section-h">Example output</div>
+    <p class="lead">One transcript in, a ready-to-share digest out.</p>
+    <div class="feature">
+      <div class="feature-head">
+        <div class="feature-num">★</div>
+        <h3>The generated digest</h3>
+        <div class="benefit">Editable before sharing</div>
+      </div>
+      <div class="shot compact">
+        <img src="assets/02-processor.png" alt="Generated digest"
+             onerror="this.parentNode.classList.add('placeholder');this.remove();this.parentNode.textContent='[ screenshot: 02-processor.png ]'"/>
+      </div>
+    </div>
+    <div class="parts">
+      <div class="part"><div class="pn">1</div><div class="pt">Summary</div><div class="pd">The gist in 3–5 sentences</div></div>
+      <div class="part"><div class="pn">2</div><div class="pt">Action items</div><div class="pd">Task, owner &amp; deadline</div></div>
+      <div class="part"><div class="pn">3</div><div class="pt">Key decisions</div><div class="pd">Settled calls, kept separate</div></div>
+      <div class="part"><div class="pn">4</div><div class="pt">Participants</div><div class="pd">Who was in the room</div></div>
+    </div>
+  </div>
+
+  <div class="foot">MeetGest · AI Meeting Transcript Processor · Internal Tool</div>
+</section>
+
+<!-- ============ PAGE 5: HISTORY + EXPORT (filled) ============ -->
+<section class="page fill">
+  <div class="section" style="margin-top:0">
+    <div class="section-h">Key features</div>
+    <div class="feat-row">
+      <div class="feature">
+        <div class="feature-head">
+          <div class="feature-num">3</div>
+          <h3>Every meeting is saved, History</h3>
+          <div class="benefit">Operational record</div>
+        </div>
+        <div class="shot">
+          <img src="assets/03-processor.png" alt="History"
+               onerror="this.parentNode.classList.add('placeholder');this.remove();this.parentNode.textContent='[ screenshot: 03-processor.png ]'"/>
+        </div>
+        <div class="feature-body">
+          Past meetings are listed by title and date. Click any one to re-open, edit again, or re-export.
+          A searchable team record, not one-off outputs.
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-head">
+          <div class="feature-num">4</div>
+          <h3>Clean export, Markdown &amp; PDF</h3>
+          <div class="benefit">Share anywhere</div>
+        </div>
+        <div class="shot">
+          <img src="assets/04-processor.png" alt="Export"
+               onerror="this.parentNode.classList.add('placeholder');this.remove();this.parentNode.textContent='[ screenshot: 04-processor.png ]'"/>
+        </div>
+        <div class="feature-body">
+          Export builds from the edited version, not the raw AI output. Download a tidy Markdown or PDF,
+          or copy straight into Google Docs to drop in Slack or email.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">MeetGest · AI Meeting Transcript Processor · Internal Tool</div>
+</section>
+
+<!-- ============ PAGE 6: SECURITY + COST + ROADMAP ============ -->
+<section class="page">
+  <div class="duo" style="margin-top:0">
+    <div class="section" style="margin-top:0">
+      <div class="section-h">Security &amp; privacy</div>
+      <ul class="sec-list">
+        <li><span class="ic">●</span> Data stored in a private database, not publicly listed.</li>
+        <li><span class="ic">●</span> Transcript sent only to the AI provider, nothing else.</li>
+        <li><span class="ic">●</span> Nothing shared publicly by default, only when you export.</li>
+        <li><span class="ic">●</span> API keys stay server-side, never in the browser.</li>
+      </ul>
+    </div>
+    <div class="section" style="margin-top:0">
+      <div class="section-h">Low operating cost</div>
+      <ul class="cost-list">
+        <li><span class="ic">✓</span> No dedicated servers to run.</li>
+        <li><span class="ic">✓</span> Pay-per-use AI, per meeting only.</li>
+        <li><span class="ic">✓</span> Runs on free / low infrastructure tiers.</li>
+        <li><span class="ic">✓</span> Scales with usage, no fixed monthly bill.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="tech-strip">
+    <span><b>Hosting:</b> Cloudflare edge</span>
+    <span><b>AI:</b> Claude (Anthropic), swappable</span>
+    <span><b>Reliability:</b> validated + auto-retried</span>
+  </div>
+
+  <div class="section">
+    <div class="section-h">Roadmap</div>
+    <div class="roadmap">
+      <div class="phase done"><span class="pbadge">Phase 1 ✓</span><div class="pt"><b>Transcript → digest.</b> Live today: summary, action items, decisions, participants, editing &amp; export.</div></div>
+      <div class="phase next"><span class="pbadge plan">Phase 2</span><div class="pt"><b>Search across meeting history.</b></div></div>
+      <div class="phase next"><span class="pbadge plan">Phase 3</span><div class="pt"><b>User login &amp; access control.</b></div></div>
+      <div class="phase next"><span class="pbadge plan">Phase 4</span><div class="pt"><b>Slack integration &amp; action-item reminders.</b></div></div>
+    </div>
+  </div>
+
+  <div class="link-cta">
+    <div class="eyebrow" style="margin-bottom:6px">Try it yourself</div>
+    <div class="url">meetgest-ui.pages.dev</div>
+    <div class="steps">Open the link → paste any meeting transcript → click Generate Digest.</div>
+  </div>
+
+  <div class="foot">MeetGest · AI Meeting Transcript Processor · Internal Tool</div>
+</section>
+
+</body>
+</html>

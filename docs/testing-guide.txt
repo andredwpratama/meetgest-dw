@@ -1,0 +1,381 @@
+================================================================================
+MEETGEST — COMPLETE TESTING GUIDE
+================================================================================
+Three layers of testing are in place:
+
+  1. Unit Tests          — pure logic, no HTTP, no browser (Vitest)
+  2. Integration Tests   — real HTTP to the Worker + real D1 (Vitest + Workers pool)
+  3. E2E Tests           — real browser, full UI flows (Playwright)
+  4. API Contract Tests  — manual + CI-runnable HTTP against live server (Postman CLI)
+
+Each layer catches a different class of bug. They are meant to be run together.
+
+================================================================================
+LAYER 1 & 2 — UNIT + INTEGRATION TESTS (backend)
+================================================================================
+
+LOCATION:   backend/test/
+RUNNER:     Vitest with @cloudflare/vitest-pool-workers
+            (tests run inside a real Workers runtime, with a real in-memory D1)
+
+HOW TO RUN:
+  cd backend
+  npm test               # run once and exit
+  npm run test:watch     # re-run on file change (dev mode)
+
+FILES AND WHAT THEY TEST:
+-----------------------------------------------------------------------
+
+validation.test.ts — Pure unit tests for Zod schemas (no HTTP, no DB)
+
+  ProcessRequest schema:
+  - rejects transcript shorter than 200 chars → error code "transcript_too_short"
+  - rejects transcript longer than 100,000 chars → error code "transcript_too_long"
+  - accepts a valid title + transcript
+
+  LlmOutput schema:
+  - accepts action items where owner and deadline are null (correct behavior)
+  - rejects a response missing the "summary" field
+
+  WHY THIS MATTERS: Zod is the safety net between the LLM and the database.
+  If these schemas are wrong, bad data gets persisted. These tests verify the
+  exact error codes the frontend and API consumers expect.
+
+-----------------------------------------------------------------------
+
+prompt.test.ts — Pure unit tests for the prompt builder (no HTTP, no DB)
+
+  buildMessages():
+  - returns exactly 2 messages: system + user
+  - embeds the meeting title and transcript in the user message
+  - system prompt contains "NEVER invent an owner"
+  - system prompt contains "NEVER invent a deadline"
+
+  WHY THIS MATTERS: The prompt is the single source of truth for LLM behavior.
+  These tests act as a contract — if someone edits prompt.ts and accidentally
+  removes a hard rule, the test fails immediately.
+
+-----------------------------------------------------------------------
+
+llm.test.ts — Unit tests for the LLM orchestration layer (fetch is mocked)
+
+  callLLM():
+  - returns parsed output + attempts=1 on a clean first response
+  - calls OpenRouter exactly twice when first response is malformed JSON,
+    then throws "llm_invalid_output" after the second failure
+
+  HOW THE MOCK WORKS:
+    vi.stubGlobal("fetch", ...) intercepts any fetch() call.
+    Calls to openrouter.ai return a controlled JSON response.
+    Langfuse calls (also via fetch) return { ok: true } so they don't fail.
+
+  WHY THIS MATTERS: The retry logic is the core reliability mechanism.
+  This test proves it calls the model twice and gives up correctly,
+  without actually spending API credits or waiting on a real LLM.
+
+-----------------------------------------------------------------------
+
+health.test.ts — Integration test (real Worker, real route)
+
+  GET /api/health:
+  - returns 200
+  - body is { ok: true }
+
+-----------------------------------------------------------------------
+
+process.test.ts — Integration tests for POST /api/process (fetch mocked, D1 real)
+
+  - 422 when transcript is too short (< 200 chars)
+  - 400 when title is missing
+  - 201 with full meeting object when input is valid
+    → verifies title, summary, action_items (length 2), key_decisions (length 1)
+    → data is actually written to and read from D1
+
+  HOW THE MOCK WORKS:
+    beforeEach stubs global fetch. OpenRouter calls return a fixed SAMPLE object.
+    The D1 tables are wiped before each test so tests don't bleed into each other.
+
+-----------------------------------------------------------------------
+
+meetings.test.ts — Integration tests for meeting CRUD routes (real D1)
+
+  GET /api/meetings:
+  - returns array with 1 item after seeding 1 meeting
+
+  GET /api/meetings/:id:
+  - returns full meeting with action_items: [] for a freshly seeded meeting
+  - returns 404 with error: "not_found" for an unknown ID
+
+  PATCH /api/meetings/:id:
+  - updates title and summary
+  - returns the updated meeting in the response body
+
+-----------------------------------------------------------------------
+
+action-items.test.ts — Integration tests for action item CRUD (real D1)
+
+  POST /api/meetings/:id/action-items:
+  - first item gets position 0
+  - second item gets position 1 (auto-increment)
+
+  PATCH /api/action-items/:id:
+  - updates task and owner
+  - returns updated row
+
+  DELETE /api/action-items/:id:
+  - returns 204 on first delete
+  - returns 404 on second delete of the same ID
+    (proves the row is actually gone, not soft-deleted)
+
+-----------------------------------------------------------------------
+
+key-decisions.test.ts — Integration tests for key decision CRUD (real D1)
+
+  POST /api/meetings/:id/key-decisions:
+  - first decision gets position 0, second gets position 1
+
+  PATCH /api/key-decisions/:id:
+  - updates text, returns updated row with new text
+
+  DELETE /api/key-decisions/:id:
+  - returns 204, then 404 on retry (proves hard delete)
+
+-----------------------------------------------------------------------
+
+WHAT "INTEGRATION" MEANS HERE:
+  These tests use SELF.fetch() from cloudflare:test, which routes the request
+  through the actual Hono app — middleware, routing, validation, DB — all real.
+  The only thing mocked is the external fetch (OpenRouter / Langfuse) where
+  needed. D1 is a real in-memory SQLite instance provided by the Workers pool.
+
+================================================================================
+LAYER 3 — UNIT TESTS (frontend)
+================================================================================
+
+LOCATION:   frontend/test/
+RUNNER:     Vitest (jsdom environment)
+
+HOW TO RUN:
+  cd frontend
+  npm test
+
+FILES AND WHAT THEY TEST:
+-----------------------------------------------------------------------
+
+export.test.ts — Unit tests for the toMarkdown() serializer
+
+  toMarkdown(meeting):
+  - formats the title as "# Title"
+  - includes "Date:" and "## Summary" sections
+  - includes the summary text
+  - shows "_No action items identified._" when list is empty
+  - shows "_No key decisions recorded._" when list is empty
+
+  With action items (mixed positions, out-of-order input):
+  - sorts by position before rendering (position 1 before position 2)
+  - formats items with no owner/deadline as "- [ ] task text"
+  - formats items with owner/deadline as "- [ ] task text (@Owner) [due: Deadline]"
+
+  With key decisions (out-of-order input):
+  - sorts by position before rendering
+  - formats each as "- decision text"
+
+  WHY THIS MATTERS: Export is built from the current edited state.
+  If toMarkdown() sorts incorrectly or drops fields, operators share
+  wrong meeting notes. This is pure function logic — no DOM, no fetch.
+
+================================================================================
+LAYER 4 — E2E TESTS (frontend browser)
+================================================================================
+
+LOCATION:   frontend/e2e/tests/
+RUNNER:     Playwright
+CONFIG:     frontend/e2e/playwright.config.ts
+
+HOW TO RUN:
+  cd frontend
+
+  # against local dev server (API calls are mocked via page.route())
+  npm run e2e
+
+  # against production deployment (no mocks — hits real API)
+  npm run e2e:prod
+
+IMPORTANT: For local runs, the Playwright config starts the Vite dev server
+automatically. You do NOT need to run `npm run dev` separately.
+
+FILES AND WHAT THEY TEST:
+-----------------------------------------------------------------------
+
+process-paste.spec.ts — Transcript input via typing/pasting
+
+  Setup: mocks POST /api/process to return a fixed meeting object
+
+  - shows empty title and transcript fields on load
+  - fills title + transcript, clicks "Generate Digest",
+    waits for "Meeting Digest Report" heading to appear
+  - verifies "Action Items" and "Key Decisions" sections are visible
+  - verifies the URL updates to include "?id=<meetingId>" after processing
+
+-----------------------------------------------------------------------
+
+process-upload.spec.ts — Transcript input via .txt file upload
+
+  Setup: mocks POST /api/process, uses fixtures/sample.txt as test file
+
+  - uploads sample.txt via the file input
+  - verifies the transcript textarea is populated from the file content
+  - fills title, clicks "Generate Digest",
+    verifies "Meeting Digest Report" appears
+
+-----------------------------------------------------------------------
+
+history.spec.ts — Meeting history dialog
+
+  Setup: mocks GET /api/meetings (list) and GET /api/meetings/hist-1 (detail)
+
+  - clicks "View History" button
+  - verifies the history dialog opens with title "Meeting History"
+  - verifies both mock meetings appear ("Sprint Planning", "Client Brief")
+  - clicks "Open" on Sprint Planning row
+  - verifies "Meeting Digest Report" loads
+  - verifies URL updates to "?id=hist-1"
+
+-----------------------------------------------------------------------
+
+export.spec.ts — Export flows
+
+  Setup: processes a mock meeting first to get to the results panel
+
+  - clicks "Export Digest", then "Markdown File"
+    → waits for download event, checks filename ends in .md
+  - clicks "Export Digest", then "PDF Document"
+    → waits for download event, checks filename ends in .pdf
+  - clicks "Export Digest", then "Google Docs"
+    → checks "Copied!" toast appears
+
+-----------------------------------------------------------------------
+
+errors.spec.ts — Error and edge case handling
+
+  - types a short transcript (< 200 chars), does NOT click submit
+    → verifies a character-count warning appears (button stays disabled)
+  - mocks POST /api/process to return 422 transcript_too_long
+    → submits, verifies "too long" message appears
+  - processes a mock meeting, then clicks "New Meeting"
+    → verifies title clears, results panel hides, URL loses "?id="
+
+-----------------------------------------------------------------------
+
+MOCKING STRATEGY IN E2E TESTS:
+  Tests use page.route("**/api/process", ...) to intercept fetch calls
+  made by the React app and return controlled JSON responses.
+  This makes tests fast and deterministic — they don't depend on
+  the backend being up or the LLM being available.
+
+  The mock is only applied when baseURL includes "localhost".
+  When running against production (npm run e2e:prod), no mocks are applied
+  and the tests hit the real deployed API.
+
+================================================================================
+LAYER 5 — API CONTRACT TESTS (Postman CLI)
+================================================================================
+
+LOCATION:   docs/meetgest-api.postman_collection.json
+RUNNER:     Postman CLI
+
+HOW TO RUN:
+  # Make sure the backend dev server is running first:
+  cd backend && npm run dev
+
+  # Then in another terminal, from the project root:
+  postman collection run docs/meetgest-api.postman_collection.json
+
+  # Against production:
+  postman collection run docs/meetgest-api.postman_collection.json \
+    --env-var "baseUrl=https://your-worker.workers.dev"
+
+WHAT IT COVERS (18 requests, 36 assertions):
+
+  Health
+  - GET /api/health → 200, ok: true
+
+  Process Transcript
+  - POST /api/process happy path → 201
+    → checks id, title, summary, action_items, key_decisions all present
+    → checks each action item has id, task, owner, deadline
+    → automatically saves meetingId, actionItemId, keyDecisionId as
+       collection variables so all downstream requests use real IDs
+  - POST /api/process transcript too short → 422, error: "transcript_too_short"
+  - POST /api/process missing title → 400
+
+  Meetings
+  - GET /api/meetings → 200, returns array with id/title/summary/created_at
+  - GET /api/meetings/:id → 200, full meeting shape including raw_transcript
+  - GET /api/meetings/does-not-exist → 404, error: "not_found"
+  - PATCH /api/meetings/:id with title+summary → 200, title updated in response
+  - PATCH /api/meetings/:id with empty body → 400, error: "no_changes"
+
+  Action Items
+  - POST /api/meetings/:id/action-items → 201, returned item has id
+  - PATCH /api/action-items/:id (edit task+deadline) → 200, deadline updated
+  - PATCH /api/action-items/:id (null out owner) → 200, owner is null
+  - DELETE /api/action-items/:id → 204
+  - DELETE /api/action-items/does-not-exist → 404, error: "not_found"
+
+  Key Decisions
+  - POST /api/meetings/:id/key-decisions → 201, returned decision has id+text
+  - PATCH /api/key-decisions/:id → 200, text updated
+  - DELETE /api/key-decisions/:id → 204
+  - DELETE /api/key-decisions/does-not-exist → 404, error: "not_found"
+
+HOW ID CHAINING WORKS:
+  The test script on POST /api/process runs:
+    pm.collectionVariables.set('meetingId', body.id)
+    pm.collectionVariables.set('actionItemId', body.action_items[0].id)
+    pm.collectionVariables.set('keyDecisionId', body.key_decisions[0].id)
+
+  Every subsequent request uses {{meetingId}}, {{actionItemId}}, {{keyDecisionId}}
+  so you can run the entire collection in order without manually copying IDs.
+
+================================================================================
+SUMMARY — WHAT EACH LAYER CATCHES
+================================================================================
+
+  Unit (validation, prompt, llm, export):
+    → Wrong Zod schema codes, prompt rule removal, retry count wrong,
+       Markdown formatting bugs, sort order bugs
+
+  Integration (health, process, meetings, action-items, key-decisions):
+    → Route wiring wrong, DB schema mismatch, wrong HTTP status codes,
+       position auto-increment broken, cascade delete not working
+
+  E2E (Playwright):
+    → UI doesn't call the right endpoint, form state not cleared on reset,
+       file upload doesn't populate textarea, download doesn't trigger,
+       URL routing broken after processing
+
+  API Contract (Postman):
+    → Regression check on live API, error shape changed,
+       field missing from response, wrong status code on edge case
+
+================================================================================
+HOW TO RUN EVERYTHING AT ONCE
+================================================================================
+
+  # Terminal 1 — start backend (needed for Postman + E2E prod run)
+  cd backend && npm run dev
+
+  # Terminal 2 — run all backend tests
+  cd backend && npm test
+
+  # Terminal 3 — run frontend unit tests
+  cd frontend && npm test
+
+  # Terminal 3 — run E2E (starts Vite automatically)
+  cd frontend && npm run e2e
+
+  # Terminal 3 — run Postman collection against local server
+  postman collection run docs/meetgest-api.postman_collection.json
+
+================================================================================
