@@ -36,6 +36,13 @@ export function makeOpenRouterResponse(output: typeof VALID_LLM_OUTPUT) {
   });
 }
 
+// Claude (Anthropic path) commonly wraps JSON in markdown fences; the parser must strip them.
+export const FENCED_OPENROUTER_RESPONSE = JSON.stringify({
+  choices: [{ message: { content: "```json\n" + JSON.stringify(VALID_LLM_OUTPUT) + "\n```" } }],
+  usage: { prompt_tokens: 120, completion_tokens: 80 },
+  model: "openai/gpt-oss-120b:free",
+});
+
 export const MALFORMED_OPENROUTER_RESPONSE = JSON.stringify({
   choices: [{ message: { content: "not valid json {{{{" } }],
   usage: { prompt_tokens: 120, completion_tokens: 10 },

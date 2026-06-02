@@ -10,6 +10,7 @@ import {
   makeOpenRouterResponse,
   VALID_LLM_OUTPUT,
   MALFORMED_OPENROUTER_RESPONSE,
+  FENCED_OPENROUTER_RESPONSE,
   LANGFUSE_OK,
 } from "../fixtures/llm-responses";
 
@@ -54,6 +55,14 @@ describe("POST /api/process", () => {
     expect(Array.isArray(body.action_items)).toBe(true);
     expect((body.action_items as unknown[]).length).toBe(3);
     expect(Array.isArray(body.key_decisions)).toBe(true);
+  });
+
+  it("returns 201 when LLM wraps JSON in markdown fences", async () => {
+    vi.stubGlobal("fetch", makeFetch(FENCED_OPENROUTER_RESPONSE));
+    const res = await post({ title: "Fenced", transcript: SAMPLE_TRANSCRIPT });
+    expect(res.status).toBe(201);
+    const body = await res.json() as Record<string, unknown>;
+    expect(body.summary).toBe(VALID_LLM_OUTPUT.summary);
   });
 
   it("returns 422 transcript_too_short", async () => {

@@ -92,8 +92,22 @@ async function callAnthropic(env: Env, messages: { role: "system" | "user"; cont
   };
 }
 
+// Anthropic has no json_object response mode, so Claude often wraps output in
+// ```json fences. Strip them (and any surrounding prose) before parsing.
+function extractJson(raw: string): string {
+  let s = raw.trim();
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fence) s = fence[1].trim();
+  if (!s.startsWith("{")) {
+    const start = s.indexOf("{");
+    const end = s.lastIndexOf("}");
+    if (start !== -1 && end > start) s = s.slice(start, end + 1);
+  }
+  return s;
+}
+
 function parseAndValidate(raw: string): LlmOutputT {
-  const obj = JSON.parse(raw);
+  const obj = JSON.parse(extractJson(raw));
   return LlmOutput.parse(obj);
 }
 
