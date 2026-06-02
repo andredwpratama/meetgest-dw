@@ -16,6 +16,7 @@ import {
   CloudLightning,
   Check,
   Plus,
+  X,
   Loader2,
   Clock,
   Users,
@@ -119,20 +120,91 @@ export function ResultsPanel({ meeting, onChange, onRefresh }: Props) {
     }
   }
 
-  const speakers = useMemo(() => {
-    if (!meeting.raw_transcript) return [];
-    const matches = meeting.raw_transcript.match(/^(?:\[)?([A-Z][a-zA-Z\s]{0,20})(?:\])?\s*:/gm);
+  const HEADER_LABELS = /^(Meeting|Date|Duration|Participants|Transcribed|Confidence|Agenda|Attendees|Yes|No|Ok|Okay|But|And|So|Then)$/i;
+
+  const derivedSpeakers = useMemo(() => {
+    const t = meeting.raw_transcript;
+    if (!t) return [];
+    // Prefer an explicit "Participants:" / "Attendees:" header line.
+    const header = t.match(/^\s*(?:Participants|Attendees)\s*:\s*(.+)$/im);
+    if (header) {
+      const names = header[1]
+        .split(/,|;/)
+        .map((n) => n.trim())
+        .filter((n) => n.length > 1);
+      if (names.length) return Array.from(new Set(names));
+    }
+    // Fallback: speaker labels in dialogue, e.g. "[00:00:04] Sarah Mitchell:" or "John: ...".
+    const matches = t.match(/(?:^|\])\s*([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z.]+)*)\s*:/gm);
     if (!matches) return [];
-    const cleanNames = matches.map((m) => m.replace(/[\[\]:]/g, "").trim());
-    return Array.from(new Set(cleanNames)).filter(
-      (name) => name.length > 1 && !/^(Yes|No|Ok|Okay|But|And|So|Then)$/i.test(name)
-    );
+    const names = matches
+      .map((m) => m.replace(/^\]/, "").replace(/:$/, "").trim())
+      .filter((n) => n.length > 1 && !HEADER_LABELS.test(n));
+    return Array.from(new Set(names));
   }, [meeting.id]);
 
-  const estimatedDuration = useMemo(() => {
-    if (!meeting.raw_transcript) return 0;
-    const words = meeting.raw_transcript.trim().split(/\s+/).length;
-    return Math.max(5, Math.round(words / 130));
+  // Stored participants override the derived list once the user edits them.
+  const [participants, setParticipants] = useState<string[]>(
+    () => meeting.participants ?? derivedSpeakers,
+  );
+  const participantsDirty = useRef(false);
+
+  useEffect(() => {
+    participantsDirty.current = false;
+    setParticipants(meeting.participants ?? derivedSpeakers);
+  }, [meeting.id]);
+
+  useDebouncedEffect(
+    async () => {
+      if (!participantsDirty.current) return;
+      const clean = participants.map((p) => p.trim()).filter(Boolean);
+      setIsSaving(true);
+      setSaveSuccess(false);
+      try {
+        const updated = await api.patchMeeting(meeting.id, { participants: clean });
+        onChange(updated);
+        participantsDirty.current = false;
+        setSaveSuccess(true);
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => setSaveSuccess(false), 2000);
+      } catch (err) {
+        console.error("Failed to auto-save participants:", err);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [participants],
+    600,
+  );
+
+  function editParticipant(i: number, value: string) {
+    participantsDirty.current = true;
+    setParticipants((prev) => prev.map((p, idx) => (idx === i ? value : p)));
+  }
+  function removeParticipant(i: number) {
+    participantsDirty.current = true;
+    setParticipants((prev) => prev.filter((_, idx) => idx !== i));
+  }
+  function addParticipant() {
+    participantsDirty.current = true;
+    setParticipants((prev) => [...prev, ""]);
+  }
+
+  const duration = useMemo(() => {
+    const t = meeting.raw_transcript;
+    if (!t) return { minutes: 0, explicit: false };
+    // Prefer an explicit "Duration: HH:MM:SS" or "Duration: MM:SS" header.
+    const m = t.match(/Duration\s*:\s*(\d{1,2}):(\d{2})(?::(\d{2}))?/i);
+    if (m) {
+      const minutes =
+        m[3] !== undefined
+          ? Number(m[1]) * 60 + Number(m[2]) + Math.round(Number(m[3]) / 60)
+          : Number(m[1]) + Math.round(Number(m[2]) / 60);
+      if (minutes > 0) return { minutes, explicit: true };
+    }
+    // Fallback: estimate from word count (~130 wpm).
+    const words = t.trim().split(/\s+/).length;
+    return { minutes: Math.max(1, Math.round(words / 130)), explicit: false };
   }, [meeting.id]);
 
   return (
@@ -213,64 +285,61 @@ export function ResultsPanel({ meeting, onChange, onRefresh }: Props) {
                   Duration
                 </span>
                 <span className="block text-sm font-bold text-slate-800 mt-0.5">
-                  {estimatedDuration > 0 ? `${estimatedDuration} min` : "N/A"}
+                  {duration.minutes > 0 ? `${duration.minutes} min` : "N/A"}
                 </span>
                 <span className="block text-[9px] text-slate-400 font-medium">
-                  Estimated from word count
+                  {duration.explicit ? "From transcript" : "Estimated from word count"}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50/30">
+            <div className="flex items-start gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50/30">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFEBCC]/30 text-[#e69b35] shrink-0">
                 <Users className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Participants
-                </span>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-sm font-bold text-slate-800">
-                    {speakers.length > 0 ? `${speakers.length} speakers` : "2 speakers"}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Participants
                   </span>
-                  <div className="flex -space-x-1.5 overflow-hidden">
-                    {speakers.length > 0 ? (
-                      speakers.slice(0, 3).map((speaker) => (
-                        <Avatar
-                          key={speaker}
-                          size="sm"
-                          className={`size-5 border border-white ${getAvatarBg(speaker)}`}
-                          title={speaker}
-                        >
-                          <AvatarFallback className="font-bold text-[8px] bg-transparent text-inherit">
-                            {getInitials(speaker)}
-                          </AvatarFallback>
-                        </Avatar>
-                      ))
-                    ) : (
-                      <>
-                        <Avatar size="sm" className="size-5 border border-white bg-slate-200">
-                          <AvatarFallback className="font-bold text-[8px] text-slate-500 bg-transparent">
-                            P1
-                          </AvatarFallback>
-                        </Avatar>
-                        <Avatar size="sm" className="size-5 border border-white bg-slate-300">
-                          <AvatarFallback className="font-bold text-[8px] text-slate-500 bg-transparent">
-                            P2
-                          </AvatarFallback>
-                        </Avatar>
-                      </>
-                    )}
-                    {speakers.length > 3 && (
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 border border-white text-[8px] font-bold text-slate-600">
-                        +{speakers.length - 3}
-                      </div>
-                    )}
-                  </div>
+                  <span className="text-[10px] font-bold text-slate-500">{participants.length}</span>
                 </div>
-                <span className="block text-[9px] text-slate-400 font-medium truncate">
-                  {speakers.length > 0 ? speakers.join(", ") : "Estimated from dialog"}
-                </span>
+                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                  {participants.map((name, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1 pl-1 pr-1.5 py-0.5 rounded-full bg-white border border-slate-200 shadow-sm"
+                    >
+                      <Avatar size="sm" className={`size-4 ${getAvatarBg(name || "?")}`} title={name}>
+                        <AvatarFallback className="font-bold text-[7px] bg-transparent text-inherit">
+                          {getInitials(name || "?")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <input
+                        value={name}
+                        onChange={(e) => editParticipant(i, e.target.value)}
+                        placeholder="Name"
+                        className="bg-transparent outline-none text-xs font-semibold text-slate-700 placeholder:text-slate-300"
+                        style={{ width: `${Math.max(3, (name.length || 4))}ch` }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeParticipant(i)}
+                        className="text-slate-300 hover:text-red-500 transition cursor-pointer"
+                        aria-label={`Remove ${name || "participant"}`}
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addParticipant}
+                    className="inline-flex items-center gap-0.5 px-2 py-1 rounded-full border border-dashed border-slate-300 text-slate-400 hover:text-slate-600 hover:border-slate-400 text-xs font-semibold transition cursor-pointer"
+                  >
+                    <Plus className="size-3" /> Add
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -20,8 +20,11 @@ app.post("/process", async (c) => {
     return c.json({ error: code, message: VALIDATION_MESSAGES[code] ?? "invalid request body" }, status);
   }
   const { title, transcript } = parsed.data;
+  // c.executionCtx throws when absent (e.g. unit tests); fall back to undefined.
+  let exec: ExecutionContext | undefined;
+  try { exec = c.executionCtx; } catch { exec = undefined; }
   try {
-    const llm = await callLLM(c.env, transcript, title, c.executionCtx);
+    const llm = await callLLM(c.env, transcript, title, exec);
     const meeting = await insertMeetingWithChildren(c.env, {
       id: newId(),
       title,

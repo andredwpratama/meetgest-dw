@@ -36,17 +36,29 @@ export function makeOpenRouterResponse(output: typeof VALID_LLM_OUTPUT) {
   });
 }
 
+// Raw "model output" strings — the text a provider's content field carries.
+export const VALID_CONTENT = JSON.stringify(VALID_LLM_OUTPUT);
 // Claude (Anthropic path) commonly wraps JSON in markdown fences; the parser must strip them.
-export const FENCED_OPENROUTER_RESPONSE = JSON.stringify({
-  choices: [{ message: { content: "```json\n" + JSON.stringify(VALID_LLM_OUTPUT) + "\n```" } }],
-  usage: { prompt_tokens: 120, completion_tokens: 80 },
-  model: "openai/gpt-oss-120b:free",
-});
+export const FENCED_CONTENT = "```json\n" + JSON.stringify(VALID_LLM_OUTPUT) + "\n```";
+export const MALFORMED_CONTENT = "not valid json {{{{";
 
-export const MALFORMED_OPENROUTER_RESPONSE = JSON.stringify({
-  choices: [{ message: { content: "not valid json {{{{" } }],
-  usage: { prompt_tokens: 120, completion_tokens: 10 },
-  model: "openai/gpt-oss-120b:free",
-});
+// Build a provider-shaped HTTP body around a raw content string, so a single
+// mock can serve whichever provider the Worker actually calls.
+export function providerBody(provider: "openrouter" | "anthropic", content: string) {
+  if (provider === "anthropic") {
+    return JSON.stringify({
+      content: [{ type: "text", text: content }],
+      usage: { input_tokens: 120, output_tokens: 80 },
+      model: "claude-haiku-4-5-20251001",
+    });
+  }
+  return JSON.stringify({
+    choices: [{ message: { content } }],
+    usage: { prompt_tokens: 120, completion_tokens: 80 },
+    model: "openai/gpt-oss-120b:free",
+  });
+}
+
+export const MALFORMED_OPENROUTER_RESPONSE = providerBody("openrouter", MALFORMED_CONTENT);
 
 export const LANGFUSE_OK = JSON.stringify({ ok: true });

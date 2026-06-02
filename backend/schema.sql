@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS meetings (
   title          TEXT NOT NULL,
   raw_transcript TEXT NOT NULL,
   summary        TEXT NOT NULL,
+  participants   TEXT,                          -- JSON array of names; null = derive from transcript
   created_at     INTEGER NOT NULL
 );
 

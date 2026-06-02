@@ -22,16 +22,28 @@ export type MeetingRow = {
   title: string;
   raw_transcript: string;
   summary: string;
+  participants: string | null;        // JSON array string in DB; null = derive from transcript
   created_at: number;
 };
 
-export type MeetingFull = MeetingRow & {
+export type MeetingFull = Omit<MeetingRow, "participants"> & {
+  participants: string[] | null;       // parsed for the API response
   action_items: ActionItemRow[];
   key_decisions: KeyDecisionRow[];
 };
 
 export function newId() {
   return crypto.randomUUID();
+}
+
+function parseParticipants(raw: string | null): string[] | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function insertMeetingWithChildren(
@@ -86,6 +98,7 @@ export async function insertMeetingWithChildren(
     title: args.title,
     raw_transcript: args.raw_transcript,
     summary: args.llm.summary,
+    participants: null,
     created_at,
     action_items: actionRows,
     key_decisions: decisionRows,
@@ -99,7 +112,12 @@ export async function getMeeting(env: Env, id: string): Promise<MeetingFull | nu
     env.DB.prepare("SELECT * FROM action_items WHERE meeting_id = ? ORDER BY position ASC").bind(id).all<ActionItemRow>(),
     env.DB.prepare("SELECT * FROM key_decisions WHERE meeting_id = ? ORDER BY position ASC").bind(id).all<KeyDecisionRow>(),
   ]);
-  return { ...meeting, action_items: actions.results ?? [], key_decisions: decisions.results ?? [] };
+  return {
+    ...meeting,
+    participants: parseParticipants(meeting.participants),
+    action_items: actions.results ?? [],
+    key_decisions: decisions.results ?? [],
+  };
 }
 
 export async function listMeetings(env: Env) {

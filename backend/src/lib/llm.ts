@@ -111,7 +111,8 @@ function parseAndValidate(raw: string): LlmOutputT {
   return LlmOutput.parse(obj);
 }
 
-export async function callLLM(env: Env, transcript: string, title: string, ctx: ExecutionContext): Promise<LlmCallResult> {
+export async function callLLM(env: Env, transcript: string, title: string, ctx?: ExecutionContext): Promise<LlmCallResult> {
+  const flush = (p: Promise<unknown>) => (ctx ? ctx.waitUntil(p) : void p);
   const messages = buildMessages(transcript, title);
   const langfuse = new Langfuse({
     publicKey: env.LANGFUSE_PUBLIC_KEY,
@@ -140,7 +141,7 @@ export async function callLLM(env: Env, transcript: string, title: string, ctx: 
       });
       const parsed = parseAndValidate(r.content);
       trace.update({ output: { ok: true, attempts: attempt } });
-      ctx.waitUntil(langfuse.flushAsync());
+      flush(langfuse.flushAsync());
       return {
         parsed,
         raw: r.content,
@@ -156,6 +157,6 @@ export async function callLLM(env: Env, transcript: string, title: string, ctx: 
     }
   }
   trace.update({ output: { ok: false, error: String(lastErr).slice(0, 300) } });
-  ctx.waitUntil(langfuse.flushAsync());
+  flush(langfuse.flushAsync());
   throw new Error("llm_invalid_output");
 }

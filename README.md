@@ -20,7 +20,7 @@ Every field is editable inline. Changes are auto-saved. Export to Markdown, PDF,
 
 ## Demo
 
-![Processor page](docs/submission/demo-screenshot.png)
+![Processor page](frontend\public\page.png)
 
 ---
 

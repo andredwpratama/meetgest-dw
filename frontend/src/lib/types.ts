@@ -19,6 +19,7 @@ export type Meeting = {
   title: string;
   raw_transcript: string;
   summary: string;
+  participants: string[] | null;
   created_at: number;
   action_items: ActionItem[];
   key_decisions: KeyDecision[];

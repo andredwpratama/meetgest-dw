@@ -7,28 +7,34 @@ import {
   LONG_TRANSCRIPT,
 } from "../fixtures/transcript";
 import {
-  makeOpenRouterResponse,
   VALID_LLM_OUTPUT,
-  MALFORMED_OPENROUTER_RESPONSE,
-  FENCED_OPENROUTER_RESPONSE,
+  VALID_CONTENT,
+  FENCED_CONTENT,
+  MALFORMED_CONTENT,
+  providerBody,
   LANGFUSE_OK,
 } from "../fixtures/llm-responses";
 
 afterEach(() => vi.unstubAllGlobals());
 
-function makeFetch(openrouterBody: string) {
+// Serve whichever provider the Worker calls (OpenRouter or Anthropic) with the
+// same raw model "content", so tests are provider-agnostic.
+function jsonResponse(body: string) {
+  return new Response(body, { status: 200, headers: { "Content-Type": "application/json" } });
+}
+
+function providerFor(url: string | URL | Request) {
+  const u = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+  if (u.includes("openrouter.ai")) return "openrouter" as const;
+  if (u.includes("api.anthropic.com")) return "anthropic" as const;
+  return null;
+}
+
+function makeFetch(content: string) {
   return vi.fn(async (url: string | URL | Request) => {
-    const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
-    if (urlStr.includes("openrouter.ai")) {
-      return new Response(openrouterBody, {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    return new Response(LANGFUSE_OK, {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    const provider = providerFor(url);
+    if (provider) return jsonResponse(providerBody(provider, content));
+    return jsonResponse(LANGFUSE_OK);
   });
 }
 
@@ -46,7 +52,7 @@ async function post(body: unknown) {
 
 describe("POST /api/process", () => {
   it("returns 201 with valid input", async () => {
-    vi.stubGlobal("fetch", makeFetch(makeOpenRouterResponse(VALID_LLM_OUTPUT)));
+    vi.stubGlobal("fetch", makeFetch(VALID_CONTENT));
     const res = await post({ title: "Q3 Review", transcript: SAMPLE_TRANSCRIPT });
     expect(res.status).toBe(201);
     const body = await res.json() as Record<string, unknown>;
@@ -58,7 +64,7 @@ describe("POST /api/process", () => {
   });
 
   it("returns 201 when LLM wraps JSON in markdown fences", async () => {
-    vi.stubGlobal("fetch", makeFetch(FENCED_OPENROUTER_RESPONSE));
+    vi.stubGlobal("fetch", makeFetch(FENCED_CONTENT));
     const res = await post({ title: "Fenced", transcript: SAMPLE_TRANSCRIPT });
     expect(res.status).toBe(201);
     const body = await res.json() as Record<string, unknown>;
@@ -94,23 +100,15 @@ describe("POST /api/process", () => {
   });
 
   it("retries and returns 201 when LLM fails once then succeeds", async () => {
-    let callCount = 0;
+    let llmCalls = 0;
     vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request) => {
-      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
-      if (urlStr.includes("openrouter.ai")) {
-        callCount++;
-        const body = callCount === 1
-          ? MALFORMED_OPENROUTER_RESPONSE
-          : makeOpenRouterResponse(VALID_LLM_OUTPUT);
-        return new Response(body, {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
+      const provider = providerFor(url);
+      if (provider) {
+        llmCalls++;
+        const content = llmCalls === 1 ? MALFORMED_CONTENT : VALID_CONTENT;
+        return jsonResponse(providerBody(provider, content));
       }
-      return new Response(LANGFUSE_OK, {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      return jsonResponse(LANGFUSE_OK);
     }));
 
     const res = await post({ title: "Retry Test", transcript: SAMPLE_TRANSCRIPT });
@@ -118,7 +116,7 @@ describe("POST /api/process", () => {
   });
 
   it("returns 502 llm_invalid_output when LLM fails both attempts", async () => {
-    vi.stubGlobal("fetch", makeFetch(MALFORMED_OPENROUTER_RESPONSE));
+    vi.stubGlobal("fetch", makeFetch(MALFORMED_CONTENT));
     const res = await post({ title: "Fail Test", transcript: SAMPLE_TRANSCRIPT });
     expect(res.status).toBe(502);
     const body = await res.json() as { error: string };

@@ -21,7 +21,7 @@ export const api = {
     request<Meeting>("/api/process", { method: "POST", body: JSON.stringify({ title, transcript }) }),
   listMeetings: () => request<MeetingPreview[]>("/api/meetings"),
   getMeeting: (id: string) => request<Meeting>(`/api/meetings/${id}`),
-  patchMeeting: (id: string, patch: { title?: string; summary?: string }) =>
+  patchMeeting: (id: string, patch: { title?: string; summary?: string; participants?: string[] }) =>
     request<Meeting>(`/api/meetings/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 
   addActionItem: (meetingId: string, body: { task: string; owner?: string | null; deadline?: string | null }) =>

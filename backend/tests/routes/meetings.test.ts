@@ -101,6 +101,27 @@ describe("PATCH /api/meetings/:id", () => {
     expect(body.summary).toBe("S2");
   });
 
+  it("updates and persists participants", async () => {
+    const meeting = await seedMeeting();
+    const res = await app.request(
+      `/api/meetings/${meeting.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ participants: ["Sarah Mitchell", "John Reeves"] }),
+      },
+      env,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json() as { participants: string[] };
+    expect(body.participants).toEqual(["Sarah Mitchell", "John Reeves"]);
+
+    // persisted across a fresh GET
+    const refetch = await app.request(`/api/meetings/${meeting.id}`, {}, env);
+    const after = await refetch.json() as { participants: string[] };
+    expect(after.participants).toEqual(["Sarah Mitchell", "John Reeves"]);
+  });
+
   it("returns 400 with empty body", async () => {
     const meeting = await seedMeeting();
     const res = await app.request(

@@ -22,6 +22,7 @@ export type LlmOutputT = z.infer<typeof LlmOutput>;
 export const PatchMeeting = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   summary: z.string().trim().min(1).optional(),
+  participants: z.array(z.string().trim().min(1).max(100)).max(50).optional(),
 });
 
 export const ActionItemBody = z.object({

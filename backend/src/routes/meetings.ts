@@ -22,6 +22,7 @@ app.patch("/meetings/:id", async (c) => {
   const binds: (string | number)[] = [];
   if (parsed.data.title !== undefined) { sets.push("title = ?"); binds.push(parsed.data.title); }
   if (parsed.data.summary !== undefined) { sets.push("summary = ?"); binds.push(parsed.data.summary); }
+  if (parsed.data.participants !== undefined) { sets.push("participants = ?"); binds.push(JSON.stringify(parsed.data.participants)); }
   if (sets.length === 0) return c.json({ error: "no_changes", message: "no fields to update" }, 400);
   binds.push(id);
   const r = await c.env.DB.prepare(`UPDATE meetings SET ${sets.join(", ")} WHERE id = ?`).bind(...binds).run();
