@@ -118,13 +118,13 @@ cd ../frontend && npm install
 cd backend
 
 # Create the D1 database on Cloudflare
-npx wrangler d1 create meeting-processor-db
+npx wrangler d1 create meetgest-db
 
 # Apply schema locally
-npx wrangler d1 execute meeting-processor-db --local --file=schema.sql
+npx wrangler d1 execute meetgest-db --local --file=schema.sql
 
 # Apply schema to production
-npx wrangler d1 execute meeting-processor-db --remote --file=schema.sql
+npx wrangler d1 execute meetgest-db --remote --file=schema.sql
 ```
 
 ### 3. Set secrets

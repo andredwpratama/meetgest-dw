@@ -1,12 +1,12 @@
-name = "meeting-processor-api"
+name = "meetgest-api"
 main = "src/index.ts"
 compatibility_date = "2025-05-28"
 compatibility_flags = ["nodejs_compat"]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "meeting-processor-db"
-database_id = "3a1ba5aa-e9de-48dd-8eeb-2ae8c2b3bf72"
+database_name = "meetgest-db"
+database_id = "92e4f516-33a5-47ac-b6a4-9fef90094448"
 
 [vars]
 LANGFUSE_HOST = "https://jp.cloud.langfuse.com"

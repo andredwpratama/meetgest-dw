@@ -7,8 +7,8 @@
     "deploy": "wrangler deploy",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:local": "wrangler d1 execute meeting-processor-db --local --file=schema.sql",
-    "db:remote": "wrangler d1 execute meeting-processor-db --remote --file=schema.sql"
+    "db:local": "wrangler d1 execute meetgest-db --local --file=schema.sql",
+    "db:remote": "wrangler d1 execute meetgest-db --remote --file=schema.sql"
   },
   "dependencies": {
     "hono": "^4.12.23",
